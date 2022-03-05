@@ -28,7 +28,7 @@ endm
 entry:	
     lea si, mmm
     push si
-    call atoi_decimal_stack
+    call atoi_decimal_cdecl
     ;; call unit_test_itoa
 
     .exit_program success
@@ -109,6 +109,11 @@ itoa_print_test_name endp
 
 current_itoa_number_str		dw 0	; <== This will be changed after each block of tests 
 
+
+;; ---------------------------------------------------------
+;; Macro for unit test definition for itoa functions
+;; Designed for use in conjuncion with testlib's /iterate_tests/
+;; ---------------------------------------------------------
 .test_number macro number, output_string
     dw &number
     db &output_string, 0
