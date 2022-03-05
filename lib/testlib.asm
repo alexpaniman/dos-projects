@@ -8,14 +8,14 @@
 ;; Destr: /AH/ /DX/
 ;; ------------------------------------------------------------
 print_status proc
-    je successful_execution
+	je successful_execution
 
-    .println failure_string
-    ret
+	.println failure_string
+	ret
 
 successful_execution:	
-    .println success_string
-    ret
+	.println success_string
+	ret
 
 success_string	db 'success', '$'
 failure_string	db 'failure', '$'
@@ -54,25 +54,25 @@ endp
 ;; ------------------------------------------------------------
 iterate_tests proc
 @@next_test_in_test_table:
-    push dx di si
-    call dx
+	push dx di si
+	call dx
 
-    xor ax, ax
+	xor ax, ax
 
-    pop si
-    .peek di
+	pop si
+	.peek di
 
-    call di
-    cmp al, 0H
+	call di
+	cmp al, 0H
 
-    call print_status
+	call print_status
 
-    pop di dx
+	pop di dx
 
-    cmp byte ptr [si], '$'
-    jne @@next_test_in_test_table
+	cmp byte ptr [si], '$'
+	jne @@next_test_in_test_table
 
-    ret
+	ret
 iterate_tests endp
 
 ;; ------------------------------------------------------------
@@ -81,11 +81,11 @@ iterate_tests endp
 ;; Destr: /DI/ /DX/ and everything from /iterate_tests/ 
 ;; ------------------------------------------------------------
 .run_tests macro table_with_tests, tester, test_name_printer
-    lea si, &table_with_tests
-    lea di, &tester
-    lea dx, &test_name_printer
+	lea si, &table_with_tests
+	lea di, &tester
+	lea dx, &test_name_printer
 
-    call iterate_tests
+	call iterate_tests
 endm
 
 ;; ------------------------------------------------------------
@@ -94,5 +94,5 @@ endm
 ;; Destr: None
 ;; ------------------------------------------------------------
 .end_of_table macro number, output_string
-    db '$'
+	db '$'
 endm    

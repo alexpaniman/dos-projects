@@ -27,45 +27,45 @@ locals @@
 ;; ---------------------------------------------------------
 ;; Lexicographically compares two strings
 ;; 
-;; Entry: /SI/ --  First string
-;;        /DI/ -- Second string
+;; Entry: /SI/    --  First string
+;;        /ES:DI/ -- Second string
 ;; 
 ;; Note:  This function expects strings in form of pointers
 ;;        to an array of a subsequent symbols, that end
 ;;        with a null-terminator symbol (With ASCII code 0)
 ;; 
-;; Exit:  This function returns in /AL/:
-;; 	  -> 00H if strings are equal
-;; 	  -> 01H if first string < second string
-;; 	  -> 10H if first string > second string
+;; Return:  This function returns in /AL/:
+;; 	   -> 00H if strings are equal
+;; 	   -> 01H if first string < second string
+;; 	   -> 10H if first string > second string
 ;; 
-;; Destr:  /SI/, /DI/, /AL/
+;; Destr:  /AL/, /DI/, /SI/
 ;; ---------------------------------------------------------
 strcmp proc
 compare_symbols:	
-    cmpsb
-    ja string1_is_bigger
-    jb string2_is_bigger
+	cmpsb
+	ja string1_is_bigger
+	jb string2_is_bigger
 
-    cmp byte ptr ds:[si - 1], 0H
-    jne compare_symbols
+	cmp byte ptr ds:[si - 1], 0H
+	jne compare_symbols
 
-    xor al, al
-    ret
+	xor al, al
+	ret
 
 string1_is_bigger:	
-    mov al, 10H
-    ret
+	mov al, 10H
+	ret
 
 string2_is_bigger:	
-    mov al, 01H
-    ret
+	mov al, 01H
+	ret
 strcmp endp
 
 ;; ---------------------------------------------------------
 ;; CDECL adapter for /strcmp/
 ;;
-;; Signature:	void strcmp(uchar16_t* str0, uchar16_t* str1)
+;; Signature:	void strcmp(uchar8_t* str0, uchar8_t* str1)
 ;; ---------------------------------------------------------
 strcmp_cdecl proc
 	push bp
@@ -96,7 +96,7 @@ strcmp_cdecl endp
 ;;		   if it was found, and pointer to its
 ;; 		   0-terminator if symbol isn't present in string
 ;; 
-;; Destr:  /AL/
+;; Destr:  /AL/, /SI/
 ;; ---------------------------------------------------------
 strchr proc
 @@next_symbol:	
@@ -112,6 +112,11 @@ strchr proc
     	ret
 strchr endp
 
+;; ---------------------------------------------------------
+;; CDECL adapter for /strchr/
+;;
+;; Signature:	uchar8_t* strchr(uchar8_t* string, uchar8_t symbol)
+;; ---------------------------------------------------------
 strchr_cdecl proc
 	push bp
     	mov bp, sp
@@ -124,6 +129,8 @@ strchr_cdecl proc
     	mov dx, [bp - 4] 
     	call strcpy
 
+    	mov ax, si
+
     	pop si
 
     	pop bp
@@ -134,8 +141,8 @@ strchr_cdecl endp
 ;; ---------------------------------------------------------
 ;; Copies string to another destination
 ;; 
-;; Expect: /SI/ -- String to copy
-;;         /DI/ -- Destination address
+;; Expect: /SI/    -- String to copy
+;;         /ES:DI/ -- Destination address
 ;; 
 ;; Return: None
 ;; 
@@ -143,16 +150,18 @@ strchr_cdecl endp
 ;; ---------------------------------------------------------
 strcpy proc
 write_string:	
-    movsb
+	movsb
 
-    cmp byte ptr ds:[si - 1], 0
-    jne write_string
+	cmp byte ptr ds:[si - 1], 0
+	jne write_string
+
+	ret
 strcpy endp
 
 ;; ---------------------------------------------------------
 ;; CDECL adapter for /strcpy/
 ;;
-;; Signature:	void strcpy(uchar16_t* src, uchar16_t* dest)
+;; Signature:	void strcpy(uchar8_t* src, uchar8_t* dest)
 ;; ---------------------------------------------------------
 strcpy_cdecl proc
 	push bp
@@ -180,27 +189,27 @@ strcpy_cdecl endp
 ;; 
 ;; Return: /CX/ -- Length of the string
 ;; 
-;; Destr:  /AL/
+;; Destr:  /AL/, /CX/
 ;; ---------------------------------------------------------
 strlen proc
-    xor cx, cx
+	xor cx, cx
 
 next_symbol:
-    inc cx
+	inc cx
 
-    lodsb
-    cmp al, 0H
-    jne next_symbol
+	lodsb
+	cmp al, 0H
+	jne next_symbol
 
-    dec cx
+	dec cx
 
-    ret
+	ret
 strlen endp
 
 ;; ---------------------------------------------------------
 ;; CDECL adapter for /strlen/
 ;;
-;; Signature:	uint16_t strlen(uchar16_t* string)
+;; Signature:	uint16_t strlen(uchar8_t* string)
 ;; ---------------------------------------------------------
 strlen_cdecl proc
 	push bp
@@ -219,60 +228,108 @@ strlen_cdecl endp
 
 
 ;; ---------------------------------------------------------
-;; Print 0-terminated string, 
+;; Print 0-terminated string to stdout, align it to the right
 ;; 
 ;; Entry: /SI/ -- Target string (0-terminated, on contrary to
 ;; 		  DOS method, which uses '$')
-
+;;
 ;; 	  /BX/ -- Alignment (if it's zero, alignment is ignored)
-
+;;
 ;; 	  /DL/ -- Alignment char (with this char, space to the 
 ;; 	   	  left of the string will be filled with to
 ;;                match desired alignment)
 ;; 
-;; Destr: /AH/, /BX/, /DX/, /CX/
+;; Destr: /AH/, /BX/, /CX/, /DX/, /DI/
 ;; ---------------------------------------------------------
 print_string proc
-    mov di, si
-    call strlen
+	mov di, si
+	call strlen
 
-    cmp bx, 0H
-    jbe @@no_alignment
+	cmp bx, 0H
+	jbe @@no_alignment
 
-    sub bx, cx
-    jbe @@no_alignment
+	sub bx, cx
+	jbe @@no_alignment
 
 @@print_alignment_char:
-    mov ah, sys_write_char
-    int dos_services
+	mov ah, sys_write_char
+	int dos_services
 
-    dec bx
-    ja @@print_alignment_char
+	dec bx
+	ja @@print_alignment_char
 
 @@no_alignment:
-    mov ah, 40H
-    mov dx, di
-    mov bx, 1H
+	mov ah, 40H
+	mov dx, di
+	mov bx, 1H
 
-    int dos_services
-    ret
+	int dos_services
+	ret
 print_string endp
 
 ;; ---------------------------------------------------------
 ;; CDECL adapter for /print_string/
+;; 
+;; Signature:	void print_string(uchar8_t* string,
+;;                                uint8_t align,
+;;                                uchar8_t  alignment_char)
 ;; ---------------------------------------------------------
 print_string_cdecl proc
 	push bp
     	mov bp, sp
+
+    	push bx di
 
     	mov si, [bp - 2] 
     	mov bx, [bp - 4] 
     	mov dl, [bp - 6] 
     	call print_string
 
+    	push di bx
+
     	pop bp
 	ret
 print_string_cdecl endp
+
+;; ---------------------------------------------------------
+;; Print decimal number representation to stdout
+;; 
+;; Entry: /DX/ -- Target number
+;; 
+;; Destr: /AH/, /BX/, /CX/, /DX/, /DI/, /SI/
+;; ---------------------------------------------------------
+print_number_decimal proc
+	lea di, @@output_buffer
+	call itoa_decimal
+
+	lea si, @@output_buffer
+	xor bx, bx
+	call print_string
+
+	ret
+
+@@output_buffer db 16 dup('X')
+print_number_decimal endp
+
+;; ---------------------------------------------------------
+;; CDECL adapter for /print_number_decimal/
+;; 
+;; Signature:	void print_number_decimal(uint16_t number)
+;; ---------------------------------------------------------
+print_number_decimal_cdecl proc
+	push bp
+    	mov bp, sp
+
+    	push bx di si
+
+    	mov dx, [bp - 2] 
+    	call print_number_decimal
+
+    	push si di bx
+
+    	pop bp
+	ret
+print_number_decimal_cdecl endp
 
 
 ;; ---------------------------------------------------------
@@ -309,15 +366,15 @@ endm
 ;; ---------------------------------------------------------
 ;; Write binary representation of a number to string
 ;;
-;; Entry:   /DX/ -- target number
-;;          /DI/ -- string destination (buffer)
+;; Entry:   /DX/    -- target number
+;;          /ES:DI/ -- string destination (buffer)
 ;;
 ;; Expect:  Cleared Destination Flag
 ;;
 ;; Note:    After execution /DI/ points to pointer immediately
 ;;	    after 0-terminator of produced string
 ;;
-;; Destr:   /AX/, /DX/, /CX/, /DI/  
+;; Destr:   /AX/, /BX/, /CX/, /DX/, /DI/  
 ;; ---------------------------------------------------------
 itoa_binary proc
 	mov cx, 10H
@@ -355,14 +412,14 @@ itoa_binary endp
 ;; ---------------------------------------------------------
 ;; CDECL adapter for /itoa_binary/
 ;; 
-;; Signature:	void itoa_binary(uint16_t   number,
-;;				 uchar16_t* output_buffer) 
+;; Signature:	void itoa_binary(uint16_t  number,
+;;				 uchar8_t* output_buffer) 
 ;; ---------------------------------------------------------
 itoa_binary_cdecl proc
 	push bp
     	mov bp, sp
 
-    	push di
+    	push bx di
 
 	cld
     
@@ -370,7 +427,7 @@ itoa_binary_cdecl proc
     	mov di, [bp - 4] 
     	call itoa_binary
 
-    	pop di
+    	pop di bx
 
     	pop bp
 	ret
@@ -380,15 +437,15 @@ itoa_binary_cdecl endp
 ;; ---------------------------------------------------------
 ;; Write hex representation of a number to string
 ;;
-;; Entry:   DX -- target number
-;;          DI -- string destination (buffer)
+;; Entry:   /DX/    -- target number
+;;          /ES:DI/ -- string destination (buffer)
 ;;
 ;; Expect:  Cleared Destination Flag
 ;;
 ;; Note:    After execution /DI/ points to pointer immediately
 ;;	    after 0-terminator of produced string
 ;;
-;; Destr:   AX, DX, CX, DI  
+;; Destr:   /AX/, /BX/, /CX/, /DX/, /DI/  
 ;; ---------------------------------------------------------
 itoa_hex proc
 	mov cx, 4H
@@ -429,14 +486,14 @@ itoa_hex endp
 ;; ---------------------------------------------------------
 ;; CDECL adapter for /itoa_hex/
 ;; 
-;; Signature:	void itoa_hex(uint16_t   number,
-;; 			      uchar16_t* output_buffer) 
+;; Signature:	void itoa_hex(uint16_t  number,
+;; 			      uchar8_t* output_buffer) 
 ;; ---------------------------------------------------------
 itoa_hex_cdecl proc
 	push bp
     	mov bp, sp
 
-    	push di
+    	push bx di
 
 	cld
     
@@ -444,7 +501,7 @@ itoa_hex_cdecl proc
     	mov di, [bp - 4] 
     	call itoa_hex
 
-    	pop di
+    	pop di bx
 
     	pop bp
 	ret
@@ -454,15 +511,15 @@ itoa_hex_cdecl endp
 ;; ---------------------------------------------------------
 ;; Write octal representation of a number to string
 ;;
-;; Entry:   /DX/ -- target number
-;;          /DI/ -- string destination (buffer)
+;; Entry:   /DX/    -- target number
+;;          /ES:DI/ -- string destination (buffer)
 ;;
 ;; Expect:  Cleared Destination Flag
 ;;
 ;; Note:    After execution /DI/ points to pointer immediately
 ;;	    after 0-terminator of produced string
 ;;
-;; Destr:   /AX/, /DX/, /CX/, /DI/  
+;; Destr:   /AX/, /BX/, /CX/, /DX/, /DI/  
 ;; ---------------------------------------------------------
 itoa_octal proc
 	mov cx, 5H 			; [...0][000]  [000][0  00][00  0][000]
@@ -513,14 +570,14 @@ itoa_octal endp
 ;; ---------------------------------------------------------
 ;; CDECL adapter for /itoa_octal/
 ;; 
-;; Signature:	void itoa_octal(uint16_t   number,
-;; 				uchar16_t* output_buffer) 
+;; Signature:	void itoa_octal(uint16_t  number,
+;; 				uchar8_t* output_buffer) 
 ;; ---------------------------------------------------------
 itoa_octal_cdecl proc
 	push bp
     	mov bp, sp
 
-    	push di
+    	push bx di
 
     	cld
 
@@ -528,7 +585,7 @@ itoa_octal_cdecl proc
     	mov di, [bp - 4] 
     	call itoa_octal
 
-    	pop di
+    	pop di bx
 
     	pop bp
 	ret
@@ -538,15 +595,15 @@ itoa_octal_cdecl endp
 ;; ---------------------------------------------------------
 ;; Write decimal representation of a number to string
 ;;
-;; Entry:   /DX/ -- target number
-;;          /DI/ -- string destination (buffer)
+;; Entry:   /DX/    -- target number
+;;          /ES:DI/ -- string destination (buffer)
 ;;
 ;; Expect:  Cleared destination flag
 ;;
 ;; Note:    After execution /DI/ points to pointer immediately
 ;;	    after 0-terminator of produced string
 ;;
-;; Destr:   /AX/, /DX/, /CX/, /DI/  
+;; Destr:   /AX/, /BX/, /DX/, /CX/, /SI/, /DI/  
 ;; ---------------------------------------------------------
 itoa_decimal proc
 	xor cx, cx
@@ -596,14 +653,14 @@ itoa_decimal endp
 ;; ---------------------------------------------------------
 ;; CDECL adapter for /itoa_decimal/
 ;; 
-;; Signature:	void itoa_decimal(uint16_t   number,
-;; 				  uchar16_t* output_buffer) 
+;; Signature:	void itoa_decimal(uint16_t  number,
+;; 				  uchar8_t* output_buffer) 
 ;; ---------------------------------------------------------
 itoa_decimal_cdecl proc
 	push bp
     	mov bp, sp
 
-    	push di
+    	push si di bx
 
     	cld
 
@@ -611,7 +668,7 @@ itoa_decimal_cdecl proc
     	mov di, [bp - 4] 
     	call itoa_decimal
 
-    	pop di
+    	pop bx di si
 
     	pop bp
 	ret
@@ -627,7 +684,7 @@ itoa_decimal_cdecl endp
 ;; 
 ;; Return: /DX/ -- parsed number
 ;; 
-;; Destr:  /AX/
+;; Destr:  /AX/, /DI/, /SI/
 ;; ---------------------------------------------------------
 atoi_decimal proc
     	xor dx, dx
@@ -652,7 +709,7 @@ atoi_decimal endp
 ;; ---------------------------------------------------------
 ;; CDECL adapter for /atoi_decimal/
 ;; 
-;; Signature:	uint16_t atoi_decimal(uchar16_t* src) 
+;; Signature:	uint16_t atoi_decimal(uchar8_t* src) 
 ;; ---------------------------------------------------------
 atoi_decimal_cdecl proc
 	push bp
