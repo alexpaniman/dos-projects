@@ -1,4 +1,5 @@
 locals @@
+.186					; Enable 80186 processor instructions
 
 ;; ---- DOS Services Nums ----
 sys_write_char   equ	02H
@@ -17,9 +18,22 @@ failure		 equ	01H
 
 ;; ------------------------------------------------------------
 
-.exit_program macro error_code
+.exit_program macro exit_code
 	mov ah, sys_exit
-	mov al, &error_code
+	mov al, &exit_code
+	int dos_services
+endm
+
+;; ------------------------------------------------------------
+
+.exit_resident macro program_end, exit_code 
+	mov ah, 31H
+	mov al, &exit_code
+
+	lea dx, &program_end
+	add dx, 0FH		; Round upwards
+	shr dx, 04H		; Divide by segment size
+
 	int dos_services
 endm
 
@@ -131,3 +145,8 @@ endm
 	pop  &register
 	push &register
 endm
+
+;; ------------------------------------------------------------
+
+true		=	1H
+false		=	0H
