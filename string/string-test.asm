@@ -1,7 +1,5 @@
 model tiny
-
 .code
-.186				; Enable 80186 processor instructions
     
 org 100H
 

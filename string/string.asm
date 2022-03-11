@@ -75,8 +75,8 @@ strcmp_cdecl proc
 
 	cld
 
-    	mov si, [bp - 2] 
-    	mov di, [bp - 4] 
+    	mov si, [bp + 4] 
+    	mov di, [bp + 6] 
     	call strcpy
 
     	pop di si
@@ -125,8 +125,8 @@ strchr_cdecl proc
 
 	cld
     
-    	mov si, [bp - 2] 
-    	mov dx, [bp - 4] 
+    	mov si, [bp + 4] 
+    	mov dx, [bp + 6] 
     	call strcpy
 
     	mov ax, si
@@ -171,8 +171,8 @@ strcpy_cdecl proc
 
 	cld
     
-    	mov si, [bp - 2] 
-    	mov di, [bp - 4] 
+    	mov si, [bp + 4] 
+    	mov di, [bp + 6] 
     	call strcpy
 
     	pop di si
@@ -189,7 +189,7 @@ strcpy_cdecl endp
 ;; 
 ;; Return: /CX/ -- Length of the string
 ;; 
-;; Destr:  /AL/, /CX/
+;; Destr:  /AL/, /CX/, /SI/
 ;; ---------------------------------------------------------
 strlen proc
 	xor cx, cx
@@ -216,9 +216,13 @@ strlen_cdecl proc
     	mov bp, sp
 
 	cld
-    
-    	mov si, [bp - 2] 
+
+    	push si
+
+    	mov si, [bp + 4] 
     	call strlen
+
+    	pop si
 
     	mov ax, cx
 
@@ -280,9 +284,9 @@ print_string_cdecl proc
 
     	push bx di
 
-    	mov si, [bp - 2] 
-    	mov bx, [bp - 4] 
-    	mov dl, [bp - 6] 
+    	mov si, [bp + 4] 
+    	mov bx, [bp + 6] 
+    	mov dl, [bp + 8] 
     	call print_string
 
     	push di bx
@@ -322,7 +326,7 @@ print_number_decimal_cdecl proc
 
     	push bx di si
 
-    	mov dx, [bp - 2] 
+    	mov dx, [bp + 4] 
     	call print_number_decimal
 
     	push si di bx
@@ -423,8 +427,8 @@ itoa_binary_cdecl proc
 
 	cld
     
-    	mov dx, [bp - 2] 
-    	mov di, [bp - 4] 
+    	mov dx, [bp + 4] 
+    	mov di, [bp + 6] 
     	call itoa_binary
 
     	pop di bx
@@ -497,8 +501,8 @@ itoa_hex_cdecl proc
 
 	cld
     
-    	mov dx, [bp - 2] 
-    	mov di, [bp - 4] 
+    	mov dx, [bp + 4] 
+    	mov di, [bp + 6] 
     	call itoa_hex
 
     	pop di bx
@@ -581,8 +585,8 @@ itoa_octal_cdecl proc
 
     	cld
 
-    	mov dx, [bp - 2] 
-    	mov di, [bp - 4] 
+    	mov dx, [bp + 4] 
+    	mov di, [bp + 6] 
     	call itoa_octal
 
     	pop di bx
@@ -664,8 +668,8 @@ itoa_decimal_cdecl proc
 
     	cld
 
-    	mov dx, [bp - 2] 
-    	mov di, [bp - 4] 
+    	mov dx, [bp + 4] 
+    	mov di, [bp + 6] 
     	call itoa_decimal
 
     	pop bx di si
@@ -719,7 +723,7 @@ atoi_decimal_cdecl proc
 
 	cld
     
-    	mov si, [bp - 2] 
+    	mov si, [bp + 4] 
     	call atoi_decimal
 
     	pop si
