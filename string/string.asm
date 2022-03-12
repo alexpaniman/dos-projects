@@ -24,6 +24,41 @@
 
 locals @@
 
+;; =========================================================
+;; 			    MACROS		
+;; =========================================================
+
+;; ---------------------------------------------------------
+;; Definitions for some control sequence characters
+;; ---------------------------------------------------------
+nul_symbol		equ		00H
+etx_symbol		equ		03H
+eot_symbol		equ		04H
+
+;; ---------------------------------------------------------
+;; Define a string (similar to db)
+;;
+;; ==> Example:
+;; 	 my_string: 	.string 'Hello, world!'
+;; 
+;; ==> Note:
+;;	 This is equvalent to db ...string, 0
+;;	
+;;	 So created variable will directly inherit size of
+;;	 given string, don't try to put anything larger!
+;;	
+;; Args: string without null-terminator, because it will be
+;;       inserted automatically
+;; ---------------------------------------------------------
+.string macro string_literal_to_insert
+    db &string_literal_to_insert, nul_symbol
+endm
+
+
+;; =========================================================
+;; 			   FUNCTIONS		
+;; =========================================================
+
 ;; ---------------------------------------------------------
 ;; Lexicographically compares two strings
 ;; 
@@ -35,9 +70,9 @@ locals @@
 ;;        with a null-terminator symbol (With ASCII code 0)
 ;; 
 ;; Return:  This function returns in /AL/:
-;; 	   -> 00H if strings are equal
-;; 	   -> 01H if first string < second string
-;; 	   -> 10H if first string > second string
+;; 	  -> 00H if strings are equal
+;; 	  -> 01H if first string < second string
+;; 	  -> 10H if first string > second string
 ;; 
 ;; Destr:  /AL/, /DI/, /SI/
 ;; ---------------------------------------------------------
@@ -47,7 +82,7 @@ compare_symbols:
 	ja string1_is_bigger
 	jb string2_is_bigger
 
-	cmp byte ptr ds:[si - 1], 0H
+	cmp byte ptr ds:[si - 1], nul_symbol
 	jne compare_symbols
 
 	xor al, al
@@ -198,7 +233,7 @@ next_symbol:
 	inc cx
 
 	lodsb
-	cmp al, 0H
+	cmp al, nul_symbol
 	jne next_symbol
 
 	dec cx
@@ -362,7 +397,7 @@ shift_leading_hex		equ 	   0CH
 ;; Destr:   DI
 ;; ---------------------------------------------------------
 .terminate_string macro
-    mov byte ptr es:[di], 0
+    mov byte ptr es:[di], nul_symbol
     inc di
 endm
 
@@ -696,7 +731,7 @@ atoi_decimal proc
 @@next_symbol:    
 	lodsb
 
-    	cmp ax, 0H
+    	cmp ax, nul_symbol
     	je @@end_of_string
 
 	imul dx, 10D
