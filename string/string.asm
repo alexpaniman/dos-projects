@@ -176,7 +176,7 @@ strchr_cdecl endp
 ;; ---------------------------------------------------------
 ;; Copies string to another destination
 ;; 
-;; Expect: /SI/    -- String to copy
+;; Expect: /DS:SI/ -- String to copy
 ;;         /ES:DI/ -- Destination address
 ;; 
 ;; Return: None
@@ -216,7 +216,6 @@ strcpy_cdecl proc
 	ret
 strcpy_cdecl endp
 	
-
 ;; ---------------------------------------------------------
 ;; Calculate string length
 ;; 
@@ -267,6 +266,69 @@ strlen_cdecl endp
 
 
 ;; ---------------------------------------------------------
+;; Splits multiline string in lines
+;; 
+;; Entry:  /DS:SI/ -- String to split (with DOS new lines '\r\n)
+;; 
+;; Return: /CX/    -- Number of strings
+;; 
+;; Destr:  /AL/ /SI/, /CX/
+;; ---------------------------------------------------------
+split_multiline proc
+	mov cx, 1H
+
+@@next_symbol:	
+	lodsb
+
+	cmp al, 0DH		; 0D
+	jne @@skip_symbol
+
+	lodsb
+
+	cmp al, 0AH		; 0A
+	jne @@skip_symbol
+
+	mov word ptr ds:[si - 2H], nul_symbol
+	inc cx
+
+@@skip_symbol:
+
+	cmp al, nul_symbol
+	jne @@next_symbol
+
+	ret
+split_multiline endp
+
+
+;; ---------------------------------------------------------
+;; Skip string separated by split_multiline:
+;; 	/SI/ <- end of string (pointer to NUL symbol) + 2
+;;
+;; Entry:  /SI/ -- Target string splitted by /split_multiline/
+;;
+;;         /CX/ -- Number of splits made
+;; 		   (provided by /split_multiline/)
+;; 
+;; Return: /SI/ -- Pointer to the next string
+;; 	   /ZF/ -- Zero flag is set if all strings are skipped
+;; 
+;; Destr:  /AL/, /SI/
+;; ---------------------------------------------------------
+strskip proc
+@@next_symbol:
+    	lodsb
+
+    	cmp al, nul_symbol
+    	jne @@next_symbol
+
+    	inc si 
+
+	ret
+strskip endp
+
+    
+
+;; ---------------------------------------------------------
 ;; Print 0-terminated string to stdout, align it to the right
 ;; 
 ;; Entry: /SI/ -- Target string (0-terminated, on contrary to
@@ -278,7 +340,7 @@ strlen_cdecl endp
 ;; 	   	  left of the string will be filled with to
 ;;                match desired alignment)
 ;; 
-;; Destr: /AH/, /BX/, /CX/, /DX/, /DI/
+;; Destr: /AX/, /BX/, /CX/, /DX/, /DI/, /SI/
 ;; ---------------------------------------------------------
 print_string proc
 	mov di, si
@@ -374,7 +436,7 @@ print_number_decimal_cdecl endp
 ;; ---------------------------------------------------------
 ;; Masks out all bits except selected
 ;; ---------------------------------------------------------
-mask_leading_byte		equ 	08000H
+mask_leading_bit		equ 	08000H
 mask_leading_oct		equ 	0E000H
 mask_leading_hex		equ 	0F000H
 
@@ -428,7 +490,7 @@ itoa_binary proc
 
 @@skip_zeros_start:
 	mov bx, dx
-    	and bx, mask_leading_byte
+    	and bx, mask_leading_bit
 
 	cmp bx, 0H
 	je @@skip_leading_zeros
@@ -564,7 +626,7 @@ itoa_octal proc
 	mov cx, 5H 			; [...0][000]  [000][0  00][00  0][000]
 
 	mov bx, dx
-    	and bx, mask_leading_byte
+    	and bx, mask_leading_bit
 
 	shl dx, 1H
 

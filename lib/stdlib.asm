@@ -136,7 +136,7 @@ endm
 
 .looper macro register, mark
 	dec &register
-	ja &mark
+	jnz &mark
 endm
 
 ;; ------------------------------------------------------------
@@ -146,6 +146,10 @@ endm
 	push &register
 endm
 
+;; ------------------------------------------------------------
+.load macro expression, label
+    	mov word ptr &expression, offset &label
+endm
 ;; ------------------------------------------------------------
 
 true		=	1H
