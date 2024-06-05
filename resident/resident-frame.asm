@@ -296,7 +296,7 @@ int08_interceptor endp
 ;;		     	This actualy takes up just 1 byte, but
 ;;		     	pushed to the stack as 2 bytes.
 ;;
-;;                   	To address this, only upped byte is taken
+;;                   	To address this, only upper byte is taken
 ;; 		        into account, lower byte byte isn't,
 ;;		        you can push anything there (e.g. 0H)
 ;;
