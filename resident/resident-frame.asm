@@ -237,13 +237,13 @@ int08_interceptor proc
 
 	push es ds
 
+    	push si di dx cx bx ax
+
     	mov ax, cs
     	mov ds, ax
     	mov es, ax
 
     	lea di, @@buffer_for_registers
-
-    	push si di dx cx bx ax
 
     	mov ax, offset registers_names
     	mov cx, registers_count
